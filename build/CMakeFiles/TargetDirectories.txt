@@ -1,0 +1,5 @@
+/home/samthedev/Documents/Vulkan/build/CMakeFiles/edit_cache.dir
+/home/samthedev/Documents/Vulkan/build/CMakeFiles/package_source.dir
+/home/samthedev/Documents/Vulkan/build/CMakeFiles/rebuild_cache.dir
+/home/samthedev/Documents/Vulkan/build/CMakeFiles/package.dir
+/home/samthedev/Documents/Vulkan/build/CMakeFiles/vk.dir

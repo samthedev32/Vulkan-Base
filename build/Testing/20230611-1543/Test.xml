@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Site BuildName="Linux-g++"
+	BuildStamp="20230611-1543-Experimental"
+	Name="hp"
+	Generator="ctest-3.18.4"
+	CompilerName="/usr/bin/g++"
+	CompilerVersion="10.2.1"
+	OSName="Linux"
+	Hostname="hp"
+	OSRelease="5.10.0-23-amd64"
+	OSVersion="#1 SMP Debian 5.10.179-1 (2023-05-12)"
+	OSPlatform="x86_64"
+	Is64Bits="1"
+	VendorString="GenuineIntel"
+	VendorID="Intel Corporation"
+	FamilyID="6"
+	ModelID="58"
+	ProcessorCacheSize="4096"
+	NumberOfLogicalCPU="4"
+	NumberOfPhysicalCPU="2"
+	TotalVirtualMemory="976"
+	TotalPhysicalMemory="11829"
+	LogicalProcessorsPerPhysical="2"
+	ProcessorClockFrequency="2993.14"
+	>
+	<Testing>
+		<StartDateTime>Jun 11 17:43 CEST</StartDateTime>
+		<StartTestTime>1686498206</StartTestTime>
+		<TestList/>
+		<EndDateTime>Jun 11 17:43 CEST</EndDateTime>
+		<EndTestTime>1686498206</EndTestTime>
+		<ElapsedMinutes>0</ElapsedMinutes>
+	</Testing>
+</Site>
