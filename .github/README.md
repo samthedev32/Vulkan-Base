@@ -12,7 +12,7 @@ This is a **Basic Vulkan Project** for experimental purposes
 
 1. Install Build Tools
 ```bash
-sudo apt install build-essentials git cmake ninja-build mingw-w64 make
+sudo apt install build-essential git cmake ninja-build mingw-w64 make
 ```
 
 2. Install Libraries
