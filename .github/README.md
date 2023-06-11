@@ -8,7 +8,7 @@ This is a **Basic Vulkan Project** for experimental purposes
 
 ### Setup
 
-#### Linux (Debian Based)
+#### Linux (Debian Based) [Tested]
 
 1. Install Build Tools
 ```bash
@@ -17,7 +17,7 @@ sudo apt install build-essential git cmake ninja-build mingw-w64 make
 
 2. Install Libraries
 ```bash
-sudo apt install libglfw3 vulkan-tools libvulkan-dev vulkan-validationlayers-dev spirv-tools libglm-dev
+sudo apt install libglfw3-dev vulkan-tools libvulkan-dev vulkan-validationlayers-dev spirv-tools libglm-dev
 ```
 
 3. Clone the Repo
@@ -27,7 +27,7 @@ git clone https://github.com/VS-dev-cpu/Vulkan-Base
 
 > To Be Continued...
 
-#### Linux (Arch Based)
+#### Linux (Arch Based) [Not Tested]
 
 1. Install Build Tools
 ```bash
@@ -46,7 +46,7 @@ git clone https://github.com/VS-dev-cpu/Vulkan-Base
 
 > To Be Continued...
 
-#### Windows
+#### Windows [Not Tested]
 
 Coming Later!
 
