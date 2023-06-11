@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/samthedev/Documents/Vulkan/build",
-  "command": "/usr/bin/g++ -I../include  -std=c++17 -g -o CMakeFiles/vk.dir/src/main.cpp.o -c /home/samthedev/Documents/Vulkan/src/main.cpp",
-  "file": "/home/samthedev/Documents/Vulkan/src/main.cpp"
-}
-]
