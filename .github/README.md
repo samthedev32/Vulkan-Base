@@ -8,7 +8,7 @@ This is a **Basic Vulkan Project** for experimental purposes
 
 ### Setup
 
-#### Linux (Debian Based) [Tested]
+#### Linux (Debian Based)
 
 1. Install Build Tools
 ```bash
@@ -27,7 +27,7 @@ git clone https://github.com/VS-dev-cpu/Vulkan-Base
 
 > To Be Continued...
 
-#### Linux (Arch Based) [Not Tested]
+#### Linux (Arch Based)
 
 1. Install Build Tools
 ```bash
@@ -46,7 +46,7 @@ git clone https://github.com/VS-dev-cpu/Vulkan-Base
 
 > To Be Continued...
 
-#### Windows [Not Tested]
+#### Windows
 
 Coming Later!
 
