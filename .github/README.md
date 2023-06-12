@@ -4,6 +4,8 @@
 
 This is a **Basic Vulkan Project** for experimental purposes
 
+Right now, i'm just following [Vulkan-Tutorial](https://vulkan-tutorial.com), but later when i'll understand more of it, i'll start tweaking it
+
 ## Documentation
 
 ### Setup
