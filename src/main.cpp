@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -130,6 +131,9 @@ class VulkanBase {
     // Graphics Pipeline
     VkPipeline graphicsPipeline;
 
+    // Framebuffers
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+
   private:
     void initVulkan() {
         createInstance();
@@ -141,6 +145,7 @@ class VulkanBase {
         createImageViews();
         createRenderPass();
         createGraphicsPipeline();
+        createFramebuffers();
     }
 
     void mainLoop() {
@@ -151,6 +156,10 @@ class VulkanBase {
     }
 
     void cleanup() {
+        // Destroy Framebuffers
+        for (auto framebuffer : swapChainFramebuffers)
+            vkDestroyFramebuffer(device, framebuffer, nullptr);
+
         // Destroy Pipeline
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
 
@@ -876,6 +885,27 @@ class VulkanBase {
         if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) !=
             VK_SUCCESS)
             throw std::runtime_error("failed to create render pass");
+    }
+
+    void createFramebuffers() {
+        swapChainFramebuffers.resize(swapChainImageViews.size());
+
+        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+            VkImageView attachment[] = {swapChainImageViews[i]};
+
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.attachmentCount = 1;
+            framebufferInfo.pAttachments = attachment;
+            framebufferInfo.width = swapChainExtent.width;
+            framebufferInfo.height = swapChainExtent.height;
+            framebufferInfo.layers = 1;
+
+            if (vkCreateFramebuffer(device, &framebufferInfo, nullptr,
+                                    &swapChainFramebuffers[i]) != VK_SUCCESS)
+                throw std::runtime_error("failed to create framebuffer");
+        }
     }
 };
 
