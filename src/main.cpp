@@ -18,8 +18,8 @@
 #include <vector>
 
 // Status:
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Rendering_and_presentation
-// Part: Submitting the command buffer
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Frames_in_flight
+// Part: ?
 
 VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
@@ -899,13 +899,26 @@ class VulkanBase {
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
 
+        VkSubpassDependency dependency{};
+        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependency.dstSubpass = 0;
+
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcAccessMask = 0;
+
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         // Create Render Pass
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+
         renderPassInfo.attachmentCount = 1;
         renderPassInfo.pAttachments = &colorAttachment;
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
+        renderPassInfo.dependencyCount = 1;
+        renderPassInfo.pDependencies = &dependency;
 
         if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) !=
             VK_SUCCESS)
@@ -1046,11 +1059,10 @@ class VulkanBase {
         VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
         VkPipelineStageFlags waitStages[] = {
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
-
-        // TODO
 
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
@@ -1061,24 +1073,10 @@ class VulkanBase {
 
         if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence) !=
             VK_SUCCESS)
-            throw std::runtime_error("failed to submit draw command buffer");
-
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        // renderPassInfo.dependencyCount = 1;
-        // renderPassInfo.pDependencies = &dependency;
+            throw std::runtime_error("failed to submit draw command bufer");
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
@@ -1086,10 +1084,9 @@ class VulkanBase {
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
+        presentInfo.pResults = nullptr; // optional
 
-        presentInfo.pResults = nullptr; // Optional
-
-        vkQueuePresentKHR(presentQueue, &presentInfo);
+        vkQueuePresentKHR(graphicsQueue, &presentInfo);
     }
 };
 
