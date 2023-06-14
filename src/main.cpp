@@ -17,6 +17,12 @@
 #include <stdlib.h>
 #include <vector>
 
+float time() {
+    struct timespec res;
+    clock_gettime(CLOCK_MONOTONIC, &res);
+    return (1000.0f * res.tv_sec + (double)res.tv_nsec / 1e6) / 1000.0f;
+}
+
 // Status:
 // https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Frames_in_flight
 // Part: ?
@@ -164,10 +170,20 @@ class VulkanBase {
     }
 
     void mainLoop() {
+        float now = time(), last = now;
+        float sum = 0;
+        int i = 0;
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
             drawFrame();
+
+            last = now;
+            now = time();
+            float deltaTime = now - last;
+            sum += 1.0f / deltaTime;
+            i++;
         }
+        printf("%f\n", sum / (float)i);
 
         vkDeviceWaitIdle(device);
     }
