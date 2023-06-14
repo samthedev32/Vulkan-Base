@@ -1,17 +1,17 @@
-#include <algorithm>
-#include <cstddef>
-#include <fstream>
-#include <iterator>
-#include <limits>
-#include <set>
 #include <vulkan/vulkan_core.h>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <iostream>
+#include <iterator>
+#include <limits>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
