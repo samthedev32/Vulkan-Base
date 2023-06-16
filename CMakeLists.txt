@@ -3,11 +3,12 @@ cmake_minimum_required(VERSION 3.0.0)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
-include_directories("include")
+include_directories("src/include")
 
 # Source Files
 set(SOURCES
     src/main.cpp
+    src/vector.cpp
 )
 
 # Libraries
