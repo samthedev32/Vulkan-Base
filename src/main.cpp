@@ -19,7 +19,7 @@
 #include <vector>
 
 // Status:
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Frames_in_flight
+// https://vulkan-tutorial.com/en/Drawing_a_triangle/Swap_chain_recreation
 // Part: ?
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -61,6 +61,12 @@ struct SwapChainSupportDetails {
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
+
+float time() {
+    struct timespec res;
+    clock_gettime(CLOCK_MONOTONIC, &res);
+    return (1000.0f * res.tv_sec + (double)res.tv_nsec / 1e6) / 1000.0f;
+}
 
 class VulkanBase {
   public:
@@ -170,10 +176,23 @@ class VulkanBase {
     }
 
     void mainLoop() {
+        float sum = 0;
+        int c = 0;
+
+        float now = time(), then = now;
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
             drawFrame();
+
+            then = now;
+            now = time();
+            float deltaTime = now - then;
+
+            sum += deltaTime;
+            c++;
         }
+
+        printf("avg fps: %f\n", 1.0f / (sum / (float)c));
 
         vkDeviceWaitIdle(device);
     }
