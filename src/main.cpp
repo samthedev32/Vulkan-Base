@@ -20,11 +20,21 @@
 #include <stdlib.h>
 #include <vector>
 
-#include <vector.hpp>
+#include <mathutil/matrix.hpp>
 
 // Status:
-// https://vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer
+// https://vulkan-tutorial.com/en/Uniform_buffers/Descriptor_layout_and_buffer
 // Part: ?
+
+// Additional: https://developer.nvidia.com/vulkan-memory-management
+
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
+#ifdef NDEBUG
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif
 
 struct Vertex {
     vec2 position;
@@ -58,8 +68,6 @@ struct Vertex {
         return attributeDescriptions;
     }
 };
-
-const int MAX_FRAMES_IN_FLIGHT = 2;
 
 VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
@@ -107,17 +115,89 @@ float time() {
 
 class VulkanBase {
   public:
-    void run() {
-        initVulkan();
-        mainLoop();
-        cleanup();
+    VulkanBase(const char *title, int width = 720, int height = 480)
+        : title(title), width(width), height(height) {
+        initWindow(title, width, height);
+
+        createInstance();
+        setupDebugMessenger();
+        createSurface();
+        pickPhysicalDevice();
+        createLogicalDevice();
+        createSwapChain();
+        createImageViews();
+        createRenderPass();
+        createGraphicsPipeline();
+        createFramebuffers();
+        createCommandPool();
+
+        createVertexBuffer();
+        createIndexBuffer();
+
+        createCommandBuffers();
+        createSyncObjects();
+    }
+
+    ~VulkanBase() {
+        vkDeviceWaitIdle(device);
+
+        cleanupSwapChain();
+
+        // Destroy Vertex Buffer & Memory
+        vkDestroyBuffer(device, vertexBuffer, nullptr);
+        vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+        // Destroy Index Buffer & Memory
+        vkDestroyBuffer(device, indexBuffer, nullptr);
+        vkFreeMemory(device, indexBufferMemory, nullptr);
+
+        // Destroy Semaphores
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+            vkDestroyFence(device, inFlightFences[i], nullptr);
+        }
+
+        // Destroy Command Pool
+        vkDestroyCommandPool(device, commandPool, nullptr);
+
+        // Destroy Pipeline
+        vkDestroyPipeline(device, graphicsPipeline, nullptr);
+
+        // Destroy Pipeline Layout
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
+        // Destroy Render Pass
+        vkDestroyRenderPass(device, renderPass, nullptr);
+
+        // Destroy Logical Device
+        vkDestroyDevice(device, nullptr);
+
+        // Destroy Debug Messenger
+        if (enableValidationLayers)
+            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+
+        // Destroy Surface
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+
+        // Destroy Instance
+        vkDestroyInstance(instance, nullptr);
+
+        // Destroy Window
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    }
+
+    bool update() {
+        glfwPollEvents();
+        drawFrame();
+
+        return !glfwWindowShouldClose(window);
     }
 
   public:
-    const unsigned int width = 720;
-    const unsigned int height = 480;
-
-    const char *title = "Vulkan Base";
+    const char *title;
+    int width, height;
 
   private:
     GLFWwindow *window;
@@ -128,12 +208,6 @@ class VulkanBase {
     // Validation Layers
     const std::vector<const char *> validationLayers = {
         "VK_LAYER_KHRONOS_validation"};
-
-#ifdef NDEBUG
-    const bool enableValidationLayers = false;
-#else
-    const bool enableValidationLayers = true;
-#endif
 
     // Debug Messenger
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -198,102 +272,23 @@ class VulkanBase {
     uint32_t currentFrame = 0;
 
     // Vertex Indices
-    const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                                          {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+    const std::vector<Vertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
     // Vertex Buffer
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
 
+    // Index Buffer
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
+
   private:
-    void initVulkan() {
-        initWindow();
-        createInstance();
-        setupDebugMessenger();
-        createSurface();
-        pickPhysicalDevice();
-        createLogicalDevice();
-        createSwapChain();
-        createImageViews();
-        createRenderPass();
-        createGraphicsPipeline();
-        createFramebuffers();
-        createCommandPool();
-        createVertexBuffer();
-        createCommandBuffers();
-        createSyncObjects();
-    }
-
-    void mainLoop() {
-        float sum = 0;
-        int c = 0;
-
-        float now = time(), then = now;
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-            drawFrame();
-
-            then = now;
-            now = time();
-            float deltaTime = now - then;
-
-            sum += deltaTime;
-            c++;
-        }
-
-        printf("avg fps: %f\n", 1.0f / (sum / (float)c));
-
-        vkDeviceWaitIdle(device);
-    }
-
-    void cleanup() {
-        cleanupSwapChain();
-
-        // Destroy Vertex Buffer
-        vkDestroyBuffer(device, vertexBuffer, nullptr);
-
-        // Free Vertex Buffer Memory
-        vkFreeMemory(device, vertexBufferMemory, nullptr);
-
-        // Destroy Semaphores
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-            vkDestroyFence(device, inFlightFences[i], nullptr);
-        }
-
-        // Destroy Command Pool
-        vkDestroyCommandPool(device, commandPool, nullptr);
-
-        // Destroy Pipeline
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-
-        // Destroy Pipeline Layout
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-
-        // Destroy Render Pass
-        vkDestroyRenderPass(device, renderPass, nullptr);
-
-        // Destroy Logical Device
-        vkDestroyDevice(device, nullptr);
-
-        // Destroy Debug Messenger
-        if (enableValidationLayers)
-            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-
-        // Destroy Surface
-        vkDestroySurfaceKHR(instance, surface, nullptr);
-
-        // Destroy Instance
-        vkDestroyInstance(instance, nullptr);
-
-        // Destroy Window
-        glfwDestroyWindow(window);
-        glfwTerminate();
-    }
-
-    void initWindow() {
+    void initWindow(const char *title, int width, int height) {
         // Init Window
         glfwInit();
 
@@ -648,7 +643,6 @@ class VulkanBase {
             std::numeric_limits<uint32_t>::max())
             return capabilities.currentExtent;
         else {
-            int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
             VkExtent2D actualExtent = {static_cast<uint32_t>(width),
@@ -1095,7 +1089,10 @@ class VulkanBase {
 
         VkBuffer vertexBuffers[] = {vertexBuffer};
         VkDeviceSize offsets[] = {0};
+
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0,
+                             VK_INDEX_TYPE_UINT16);
 
         VkViewport viewport{};
         viewport.x = 0.0f;
@@ -1111,8 +1108,8 @@ class VulkanBase {
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0,
-                  0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()),
+                         1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -1226,7 +1223,6 @@ class VulkanBase {
     }
 
     void recreateSwapChain() {
-        int width = 0, height = 0;
         glfwGetFramebufferSize(window, &width, &height);
         while (width == 0 || height == 0) {
             glfwGetFramebufferSize(window, &width, &height);
@@ -1243,39 +1239,34 @@ class VulkanBase {
     }
 
     void createVertexBuffer() {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = sizeof(Vertex) * vertices.size();
-        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        uint32_t bufferSize = sizeof(Vertex) * vertices.size();
 
-        if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) !=
-            VK_SUCCESS)
-            throw std::runtime_error("failed to create vertex buffer");
+        // Create Staging Buffer
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     stagingBuffer, stagingBufferMemory);
 
-        // Alloc Memory
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex =
-            findMemoryType(memRequirements.memoryTypeBits,
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        if (vkAllocateMemory(device, &allocInfo, nullptr,
-                             &vertexBufferMemory) != VK_SUCCESS)
-            throw std::runtime_error("failed to allocate vertex buffer memory");
-
-        vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
-
+        // Copy Vertex Data
         void *data;
-        vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-        memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, vertices.data(), (size_t)bufferSize);
 
-        vkUnmapMemory(device, vertexBufferMemory);
+        vkUnmapMemory(device, stagingBufferMemory);
+
+        // Create Vertex Buffer
+        createBuffer(bufferSize,
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer,
+                     vertexBufferMemory);
+
+        copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
     uint32_t findMemoryType(uint32_t typeFilter,
@@ -1291,12 +1282,116 @@ class VulkanBase {
 
         throw std::runtime_error("failed to find suitable memory type");
     }
+
+    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
+                      VkMemoryPropertyFlags properties, VkBuffer &buffer,
+                      VkDeviceMemory &bufferMemory) {
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;
+        bufferInfo.usage = usage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+            throw std::runtime_error("failed to create buffer");
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex =
+            findMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) !=
+            VK_SUCCESS)
+            throw std::runtime_error("failed to allocate buffer memory");
+
+        vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    }
+
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = commandPool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        VkBufferCopy copyRegion{};
+        copyRegion.srcOffset = 0; // optional
+        copyRegion.dstOffset = 0; // optional
+        copyRegion.size = size;
+        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(graphicsQueue);
+
+        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+    }
+
+    void createIndexBuffer() {
+        VkDeviceSize bufferSize = sizeof(uint16_t) * indices.size();
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                     stagingBuffer, stagingBufferMemory);
+
+        void *data;
+        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, indices.data(), (size_t)bufferSize);
+        vkUnmapMemory(device, stagingBufferMemory);
+
+        createBuffer(bufferSize,
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer,
+                     indexBufferMemory);
+
+        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
 };
 
 int main() {
-    VulkanBase app;
+    VulkanBase app("Vulkan Base");
     try {
-        app.run();
+        float sum = 0;
+        int c = 0;
+
+        float now = time(), then = now;
+
+        while (app.update()) {
+            then = now;
+            now = time();
+            float deltaTime = now - then;
+
+            sum += deltaTime;
+            c++;
+        }
+        printf("avg fps: %f\n", 1.0f / (sum / (float)c));
+
     } catch (const std::exception &e) {
         printf("%s\n", e.what());
         return EXIT_FAILURE;
