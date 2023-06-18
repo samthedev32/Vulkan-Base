@@ -1,0 +1,3 @@
+[submodule "mathutil"]
+	path = mathutil
+	url = https://github.com/VS-dev-cpu/mathutil
