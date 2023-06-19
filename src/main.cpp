@@ -1,7 +1,7 @@
 #include <array>
 #include <exception>
 #include <sys/types.h>
-#include <vulkan/vulkan_core.h>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -23,7 +23,7 @@
 #include <mathutil/matrix.hpp>
 
 // Status:
-// https://vulkan-tutorial.com/en/Uniform_buffers/Descriptor_layout_and_buffer
+// https://vulkan-tutorial.com/en/Texture_mapping/Images
 // Part: ?
 
 // Additional: https://developer.nvidia.com/vulkan-memory-management
@@ -113,6 +113,10 @@ float time() {
     return (1000.0f * res.tv_sec + (double)res.tv_nsec / 1e6) / 1000.0f;
 }
 
+struct UniformBufferObject {
+    mat4 model, view, projection;
+};
+
 class VulkanBase {
   public:
     VulkanBase(const char *title, int width = 720, int height = 480)
@@ -127,12 +131,17 @@ class VulkanBase {
         createSwapChain();
         createImageViews();
         createRenderPass();
+        createDescriptorSetLayout();
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
 
         createVertexBuffer();
         createIndexBuffer();
+        createUniformBuffers();
+
+        createDescriptorPool();
+        createDescriptorSets();
 
         createCommandBuffers();
         createSyncObjects();
@@ -142,6 +151,15 @@ class VulkanBase {
         vkDeviceWaitIdle(device);
 
         cleanupSwapChain();
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        }
+
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
         // Destroy Vertex Buffer & Memory
         vkDestroyBuffer(device, vertexBuffer, nullptr);
@@ -244,6 +262,7 @@ class VulkanBase {
     std::vector<VkImageView> swapChainImageViews;
 
     // Pipeline Layout
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
 
     // Render Pass
@@ -286,6 +305,14 @@ class VulkanBase {
     // Index Buffer
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
+
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void *> uniformBuffersMapped;
+
+    // Descriptor Pool
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
 
   private:
     void initWindow(const char *title, int width, int height) {
@@ -857,7 +884,7 @@ class VulkanBase {
 
         // - Culling
         rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f; // optional
@@ -905,8 +932,8 @@ class VulkanBase {
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType =
             VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 0;            // optional
-        pipelineLayoutInfo.pSetLayouts = nullptr;         // optional
+        pipelineLayoutInfo.setLayoutCount = 1;
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
         pipelineLayoutInfo.pushConstantRangeCount = 0;    // optional
         pipelineLayoutInfo.pPushConstantRanges = nullptr; // optional
 
@@ -1108,6 +1135,9 @@ class VulkanBase {
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipelineLayout, 0, 1,
+                                &descriptorSets[currentFrame], 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()),
                          1, 0, 0, 0);
 
@@ -1162,6 +1192,8 @@ class VulkanBase {
 
         vkResetCommandBuffer(commandBuffers[currentFrame], 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+
+        updateUniformBuffer(currentFrame);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1372,25 +1404,125 @@ class VulkanBase {
         vkDestroyBuffer(device, stagingBuffer, nullptr);
         vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
+
+    void createDescriptorSetLayout() {
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uboLayoutBinding.pImmutableSamplers = nullptr; // optional
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &uboLayoutBinding;
+
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr,
+                                        &descriptorSetLayout) != VK_SUCCESS)
+            throw std::runtime_error("failed to create descriptor set layout");
+    }
+
+    void createUniformBuffers() {
+        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                         uniformBuffers[i], uniformBuffersMemory[i]);
+
+            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0,
+                        &uniformBuffersMapped[i]);
+        }
+    }
+
+    void updateUniformBuffer(uint32_t currentImage) {
+        static float startTime = time();
+
+        float now = time() - startTime;
+
+        UniformBufferObject ubo{};
+        ubo.model = matrix::rotation(rads(vec3(0.0f, 0.0f, time() * 90.0f)));
+        ubo.view =
+            matrix::lookat(vec3(2.0f, 2.0f, 2.0f), vec3(0.0f, 0.0f, 0.0f),
+                           vec3(0.0f, 0.0f, 1.0f));
+        ubo.projection = matrix::perspective(
+            rads(45.0f), swapChainExtent.width / (float)swapChainExtent.height,
+            0.1f, 1000.0f);
+        ubo.projection.m[1][1] *= -1;
+
+        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+    }
+
+    void createDescriptorPool() {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        if (vkCreateDescriptorPool(device, &poolInfo, nullptr,
+                                   &descriptorPool) != VK_SUCCESS)
+            throw std::runtime_error("failed to create descriptor pool");
+    }
+
+    void createDescriptorSets() {
+        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
+                                                   descriptorSetLayout);
+
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorSetCount =
+            static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        allocInfo.pSetLayouts = layouts.data();
+
+        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+        if (vkAllocateDescriptorSets(device, &allocInfo,
+                                     descriptorSets.data()) != VK_SUCCESS)
+            throw std::runtime_error("failed to allocate descriptor sets");
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(UniformBufferObject);
+
+            VkWriteDescriptorSet descriptorWrite{};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = descriptorSets[i];
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstArrayElement = 0;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.pBufferInfo = &bufferInfo;
+            descriptorWrite.pImageInfo = nullptr;       // optional
+            descriptorWrite.pTexelBufferView = nullptr; // optional
+
+            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+        }
+    }
 };
 
 int main() {
     VulkanBase app("Vulkan Base");
     try {
-        float sum = 0;
-        int c = 0;
-
         float now = time(), then = now;
 
         while (app.update()) {
             then = now;
             now = time();
             float deltaTime = now - then;
-
-            sum += deltaTime;
-            c++;
         }
-        printf("avg fps: %f\n", 1.0f / (sum / (float)c));
 
     } catch (const std::exception &e) {
         printf("%s\n", e.what());
