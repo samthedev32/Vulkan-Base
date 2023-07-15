@@ -115,7 +115,7 @@ struct Model {
                         // TODO: duplicate face optimization
                         for (int i = 0; i < 3; i++) {
                             Vertex vertex;
-                            vertex.position = vertices[v[i]];
+                            vertex.position = vertices[v[i] - 1];
                             vertex.color = {(float)(rand() % 1000) / 1000,
                                             (float)(rand() % 1000) / 1000,
                                             (float)(rand() % 1000) / 1000};
