@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-#include <mathutil/matrix.hpp>
+#include <mathutil/common.hpp>
 
 #include <array>
 #include <cstring>
@@ -16,7 +16,7 @@
 
 struct Vertex {
     vec3 position;
-    vec3 color;
+    vec2 texCoord;
 
     static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
@@ -40,8 +40,8 @@ struct Vertex {
 
         attributeDescriptions[1].binding = 0;
         attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
+        attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
 
         return attributeDescriptions;
     }
@@ -79,7 +79,7 @@ struct Model {
         Model model;
 
         std::vector<vec3> vertices;
-        std::vector<vec3> colors;
+        std::vector<vec2> texCoords;
 
         // Load Model
         std::string line;
@@ -93,16 +93,21 @@ struct Model {
                     vec3 vertex;
                     sscanf(data, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
                     vertices.push_back(vertex);
+                } else if (!strcmp(index, "vt")) {
+                    vec2 texCoord;
+                    sscanf(data, "%f %f %*f", &texCoord.x, &texCoord.y);
+                    texCoords.push_back(texCoord);
                 } else if (!strcmp(index, "f")) {
-                    int v[4];
+                    int v[4], vt[4];
                     char part[4][128];
                     int parts = sscanf(data, "%s %s %s %s", part[0], part[1],
                                        part[2], part[3]);
 
                     for (int i = 0; i < parts; i++) {
-                        if (sscanf(part[i], "%i/%*i/%*i", &v[i]) != 3)
+                        if (sscanf(part[i], "%i/%i/%*i", &v[i], &vt[i]) != 3)
                             if (sscanf(part[i], "%i//%*i", &v[i]) != 2)
-                                if (sscanf(part[i], "%i/%*i", &v[i]) != 2)
+                                if (sscanf(part[i], "%i/%i", &v[i], &vt[i]) !=
+                                    2)
                                     if (sscanf(part[i], "%i", &v[i]) != 1) {
                                         printf("Failed to read Face Line\n");
                                         parts = 0;
@@ -116,9 +121,7 @@ struct Model {
                         for (int i = 0; i < 3; i++) {
                             Vertex vertex;
                             vertex.position = vertices[v[i] - 1];
-                            vertex.color = {(float)(rand() % 1000) / 1000,
-                                            (float)(rand() % 1000) / 1000,
-                                            (float)(rand() % 1000) / 1000};
+                            vertex.texCoord = texCoords[vt[i] - 1];
 
                             model.vertices.push_back(vertex);
                             model.indices.push_back(model.vertices.size() - 1);

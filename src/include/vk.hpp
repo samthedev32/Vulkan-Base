@@ -2,8 +2,8 @@
 
 #include <types.hpp>
 
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan_core.h>
 
 // Status:
 // https://vulkan-tutorial.com/en/Texture_mapping/Image_view_and_sampler
@@ -122,6 +122,14 @@ class VulkanBase {
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
 
+    VkImageView textureImageView;
+    VkSampler textureSampler;
+
+    // Depth Buffer (Image)
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
+
   private:
     void initWindow(const char *title, int width, int height);
 
@@ -235,5 +243,19 @@ class VulkanBase {
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width,
                            uint32_t height);
 
+    VkImageView createImageView(VkImage image, VkFormat format,
+                                VkImageAspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
+
     void createTextureImageView();
+    void createTextureSampler();
+
+    void createDepthResources();
+
+    VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates,
+                                 VkImageTiling tiling,
+                                 VkFormatFeatureFlags features);
+
+    VkFormat findDepthFormat();
+
+    bool hasStencilComponent(VkFormat format);
 };
