@@ -73,7 +73,6 @@ struct Model {
 
     static Model load(const mesh_t &mesh) {
         Model model;
-        //
 
         for (int i = 0; i < mesh.indices; i++) {
             model.indices.push_back(mesh.index[i * 3 + 0]);
@@ -81,9 +80,8 @@ struct Model {
             model.indices.push_back(mesh.index[i * 3 + 2]);
 
             Vertex v;
-            v.position = {mesh.vertex[i * 3 + 0], mesh.vertex[i * 3 + 1],
-                          mesh.vertex[i * 3 + 2]};
-            v.texCoord = {mesh.texcoord[i * 2 + 0], mesh.texcoord[i * 2 + 1]};
+            v.position = {mesh.vertex[i].x, mesh.vertex[i].y, mesh.vertex[i].z};
+            v.texCoord = {mesh.texcoord[i].x, mesh.texcoord[i].y};
         }
 
         return model;
