@@ -75,13 +75,15 @@ struct Model {
         Model model;
 
         for (int i = 0; i < mesh.indices; i++) {
-            // model.indices.push_back(mesh.index[i * 3 + 0]);
-            // model.indices.push_back(mesh.index[i * 3 + 1]);
-            // model.indices.push_back(mesh.index[i * 3 + 2]);
+            model.indices.push_back(mesh.index[i * 3 + 0]);
+            model.indices.push_back(mesh.index[i * 3 + 1]);
+            model.indices.push_back(mesh.index[i * 3 + 2]);
 
             Vertex v;
             v.position = {mesh.vertex[i].x, mesh.vertex[i].y, mesh.vertex[i].z};
             v.texCoord = {mesh.texcoord[i].x, mesh.texcoord[i].y};
+
+            model.vertices.push_back(v);
         }
 
         return model;

@@ -4,9 +4,7 @@
 int main() {
     srand(time(0));
 
-    mesh_t m;
-    mesh_load(&m, "../res/polyplanet.obj");
-    VulkanBase app(Model::load(m), "Vulkan Base");
+    VulkanBase app(Model::load("../res/polyplanet.obj"), "Vulkan Base");
     try {
         float now = time(), then = now;
 
