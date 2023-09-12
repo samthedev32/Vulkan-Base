@@ -1,4 +1,3 @@
-#include <objio.hpp>
 #include <vk.hpp>
 
 int main() {

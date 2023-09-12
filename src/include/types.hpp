@@ -3,8 +3,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-#include <mathutil/common.hpp>
-#include <objio.hpp>
+#include <EngineToolkit/EngineToolkit.hpp>
 
 #include <array>
 #include <cstring>
@@ -70,24 +69,6 @@ struct UniformBufferObject {
 struct Model {
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
-
-    static Model load(const mesh_t &mesh) {
-        Model model;
-
-        for (int i = 0; i < mesh.indices; i++) {
-            model.indices.push_back(mesh.index[i * 3 + 0]);
-            model.indices.push_back(mesh.index[i * 3 + 1]);
-            model.indices.push_back(mesh.index[i * 3 + 2]);
-
-            Vertex v;
-            v.position = {mesh.vertex[i].x, mesh.vertex[i].y, mesh.vertex[i].z};
-            v.texCoord = {mesh.texcoord[i].x, mesh.texcoord[i].y};
-
-            model.vertices.push_back(v);
-        }
-
-        return model;
-    }
 
     static Model load(std::string path) {
         std::ifstream file(path);

@@ -1,9 +1,3 @@
-[submodule "mathutil"]
-	path = mathutil
-	url = https://github.com/VS-dev-cpu/mathutil
-[submodule "objio"]
-	path = objio
-	url = https://github.com/samthedev32/objio
 [submodule "EngineToolkit"]
 	path = EngineToolkit
 	url = https://github.com/samthedev32/EngineToolkit

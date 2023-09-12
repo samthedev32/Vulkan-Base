@@ -3,8 +3,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
-add_subdirectory(mathutil)
-add_subdirectory(objio)
+add_subdirectory(EngineToolkit)
 
 # Source Files
 set(SOURCES
@@ -17,8 +16,7 @@ set(LIBRARIES
     glfw
     vulkan
 
-    mathutil
-    objio
+    EngineToolkit
 )
 
 # Project
