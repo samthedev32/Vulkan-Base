@@ -1293,16 +1293,17 @@ void VulkanBase::updateUniformBuffer(uint32_t currentImage) {
     float now = time() - startTime;
 
     UniformBufferObject ubo{};
-    mat4 model =
-        mat4::rotationX(rads(90.0f)) * mat4::rotationZ(rads(time() * 20.0f));
-    model = model * mat4::rotationY(rads(45.0f));
+    mat<4> model = mat<4>::rotationX(rads(90.0f)) *
+                   mat<4>::rotationZ(rads(time() * 20.0f));
+    model = model * mat<4>::rotationY(rads(45.0f));
     ubo.model = model;
-    ubo.view = mat4::lookat(vec3(00.0f, 40.0f, 40.0f), vec3(0.0f, 0.0f, 1.0f),
-                            vec3(0.0f, 0.0f, 1.0f));
-    ubo.projection = mat4::perspective(
+    ubo.view =
+        mat<4>::lookat(vec<3>(00.0f, 40.0f, 40.0f), vec<3>(0.0f, 0.0f, 1.0f),
+                       vec<3>(0.0f, 0.0f, 1.0f));
+    ubo.projection = mat<4>::perspective(
         rads(45.0f), swapChainExtent.width / (float)swapChainExtent.height,
         0.1f, 1000.0f);
-    ubo.projection.m[1][1] *= -1;
+    ubo.projection(1, 1) *= -1;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

@@ -14,9 +14,11 @@
 #include <string>
 #include <vector>
 
+using namespace EngineToolkit;
+
 struct Vertex {
-    vec3 position;
-    vec2 texCoord;
+    vec<3> position;
+    vec<2> texCoord;
 
     static VkVertexInputBindingDescription getBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
@@ -63,7 +65,7 @@ struct SwapChainSupportDetails {
 };
 
 struct UniformBufferObject {
-    mat4 model, view, projection;
+    mat<4> model, view, projection;
 };
 
 struct Model {
@@ -78,8 +80,8 @@ struct Model {
 
         Model model;
 
-        std::vector<vec3> vertices;
-        std::vector<vec2> texCoords;
+        std::vector<vec<3>> vertices;
+        std::vector<vec<2>> texCoords;
 
         // Load Model
         std::string line;
@@ -90,12 +92,13 @@ struct Model {
 
             if (c == 2) {
                 if (!strcmp(index, "v")) {
-                    vec3 vertex;
-                    sscanf(data, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
+                    vec<3> vertex;
+                    sscanf(data, "%f %f %f", &vertex->x, &vertex->y,
+                           &vertex->z);
                     vertices.push_back(vertex);
                 } else if (!strcmp(index, "vt")) {
-                    vec2 texCoord;
-                    sscanf(data, "%f %f %*f", &texCoord.x, &texCoord.y);
+                    vec<2> texCoord;
+                    sscanf(data, "%f %f %*f", &texCoord->x, &texCoord->y);
                     texCoords.push_back(texCoord);
                 } else if (!strcmp(index, "f")) {
                     int v[4], vt[4];
