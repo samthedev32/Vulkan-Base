@@ -46,9 +46,11 @@ float time() {
     return (1000.0f * res.tv_sec + (double)res.tv_nsec / 1e6) / 1000.0f;
 }
 
-VulkanBase::VulkanBase(Model model, const char *title, int width, int height)
-    : model(model), title(title), width(width), height(height) {
-    initWindow(title, width, height);
+VulkanBase::VulkanBase(Model model,
+                       std::vector<std::array<std::string, 2>> shaders,
+                       const char *title, vec<2, int> size)
+    : model(model), title(title), size(size) {
+    initWindow();
 
     createInstance();
     setupDebugMessenger();
@@ -58,6 +60,8 @@ VulkanBase::VulkanBase(Model model, const char *title, int width, int height)
     createSwapChain();
     createImageViews();
     createRenderPass();
+
+    // TODO: create multiple GPipelines
     createDescriptorSetLayout();
     createGraphicsPipeline();
 
@@ -152,7 +156,7 @@ bool VulkanBase::update() {
     return !glfwWindowShouldClose(window);
 }
 
-void VulkanBase::initWindow(const char *title, int width, int height) {
+void VulkanBase::initWindow() {
     // Init Window
     glfwInit();
 
@@ -161,7 +165,7 @@ void VulkanBase::initWindow(const char *title, int width, int height) {
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+    window = glfwCreateWindow(size->x, size->y, title, nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 }
@@ -506,10 +510,10 @@ VulkanBase::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
         std::numeric_limits<uint32_t>::max())
         return capabilities.currentExtent;
     else {
-        glfwGetFramebufferSize(window, &width, &height);
+        glfwGetFramebufferSize(window, &size->x, &size->y);
 
-        VkExtent2D actualExtent = {static_cast<uint32_t>(width),
-                                   static_cast<uint32_t>(height)};
+        VkExtent2D actualExtent = {static_cast<uint32_t>(size->x),
+                                   static_cast<uint32_t>(size->y)};
 
         actualExtent.width =
             std::clamp(actualExtent.width, capabilities.minImageExtent.width,
@@ -1113,9 +1117,9 @@ void VulkanBase::cleanupSwapChain() {
 }
 
 void VulkanBase::recreateSwapChain() {
-    glfwGetFramebufferSize(window, &width, &height);
-    while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(window, &width, &height);
+    glfwGetFramebufferSize(window, &size->x, &size->y);
+    while (size == vec<2, int>{0}) {
+        glfwGetFramebufferSize(window, &size->x, &size->y);
         glfwWaitEvents();
     };
 

@@ -15,8 +15,8 @@ float time();
 
 class VulkanBase {
   public:
-    VulkanBase(Model model, const char *title, int width = 720,
-               int height = 480);
+    VulkanBase(Model model, std::vector<std::array<std::string, 2>> shaders,
+               const char *title, vec<2, int> size = {720, 480});
 
     ~VulkanBase();
 
@@ -24,7 +24,7 @@ class VulkanBase {
 
   public:
     const char *title;
-    int width, height;
+    vec<2, int> size;
 
   private:
     GLFWwindow *window;
@@ -131,7 +131,7 @@ class VulkanBase {
     VkImageView depthImageView;
 
   private:
-    void initWindow(const char *title, int width, int height);
+    void initWindow();
 
     static void framebufferResizeCallback(GLFWwindow *window, int width,
                                           int height);
