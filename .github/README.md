@@ -19,12 +19,7 @@ sudo apt install build-essential git cmake ninja-build mingw-w64 make
 
 2. Install Libraries
 ```bash
-sudo apt install libglfw3-dev vulkan-tools libvulkan-dev vulkan-validationlayers-dev spirv-tools libglm-dev
-```
-
-3. Clone the Repo
-```bash
-git clone https://github.com/VS-dev-cpu/Vulkan-Base
+sudo apt install libglfw3-dev vulkan-tools libvulkan-dev vulkan-validationlayers-dev spirv-tools
 ```
 
 > To Be Continued...
@@ -39,11 +34,6 @@ sudo pacman -S git cmake ninja mingw-w64-gcc make
 2. Install Libraries
 ```bash
 sudo pacman -s glfw-x11 vulkan-devel glm
-```
-
-3. Clone the Repo
-```bash
-git clone https://github.com/VS-dev-cpu/Vulkan-Base
 ```
 
 > To Be Continued...

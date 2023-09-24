@@ -3,8 +3,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
-add_subdirectory(EngineToolkit)
-
 # Source Files
 set(SOURCES
     src/main.cpp
@@ -12,11 +10,10 @@ set(SOURCES
 )
 
 # Libraries
+
 set(LIBRARIES
     glfw
     vulkan
-
-    EngineToolkit
 )
 
 # Project

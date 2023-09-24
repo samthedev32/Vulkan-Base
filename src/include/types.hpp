@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-#include <EngineToolkit/EngineToolkit.hpp>
+#include "mat.hpp"
 
 #include <array>
 #include <cstring>
@@ -13,8 +13,6 @@
 
 #include <string>
 #include <vector>
-
-using namespace EngineToolkit;
 
 struct Vertex {
     vec<3> position;
