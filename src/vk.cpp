@@ -1,6 +1,7 @@
+#include <vk/vk.hpp>
+
 #include <cstddef>
 #include <stdexcept>
-#include <vk.hpp>
 #include <vulkan/vulkan_core.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -17,44 +18,22 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-VkResult CreateDebugUtilsMessengerEXT(
-    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
-    const VkAllocationCallbacks *pAllocator,
-    VkDebugUtilsMessengerEXT *pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-        instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance,
-                                   VkDebugUtilsMessengerEXT debugMessenger,
-                                   const VkAllocationCallbacks *pAllocator) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-        instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
 float time() {
     struct timespec res;
     clock_gettime(CLOCK_MONOTONIC, &res);
-    return (1000.0f * res.tv_sec + (double)res.tv_nsec / 1e6) / 1000.0f;
+    return (1000.0f * res.tv_sec + (float)res.tv_nsec / 1e6) / 1000.0f;
 }
 
-VulkanBase::VulkanBase(Model model,
-                       std::vector<std::array<std::string, 2>> shaders,
-                       const char *title, vec<2, int> size)
-    : model(model), title(title), size(size) {
-    initWindow();
+VulkanBase::VulkanBase(Model model, const char *title, vec<2, int> size)
+    : model(model), window(title, size) {
 
     createInstance();
-    setupDebugMessenger();
-    createSurface();
+
+    if (enableValidationLayers)
+        debugMessenger = new DebugMessenger(&instance);
+
+    window.createSurface(instance, surface);
+
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
@@ -134,46 +113,19 @@ VulkanBase::~VulkanBase() {
     // Destroy Logical Device
     vkDestroyDevice(device, nullptr);
 
-    // Destroy Debug Messenger
-    if (enableValidationLayers)
-        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-
     // Destroy Surface
     vkDestroySurfaceKHR(instance, surface, nullptr);
 
+    delete debugMessenger;
+
     // Destroy Instance
     vkDestroyInstance(instance, nullptr);
-
-    // Destroy Window
-    glfwDestroyWindow(window);
-    glfwTerminate();
 }
 
 bool VulkanBase::update() {
-    glfwPollEvents();
     drawFrame();
 
-    return !glfwWindowShouldClose(window);
-}
-
-void VulkanBase::initWindow() {
-    // Init Window
-    glfwInit();
-
-    if (!glfwVulkanSupported())
-        throw std::runtime_error("vulkan is not supported");
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    window = glfwCreateWindow(size->x, size->y, title, nullptr, nullptr);
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-}
-
-void VulkanBase::framebufferResizeCallback(GLFWwindow *window, int width,
-                                           int height) {
-    auto app = reinterpret_cast<VulkanBase *>(glfwGetWindowUserPointer(window));
-    app->framebufferResized = true;
+    return window.update();
 }
 
 void VulkanBase::createInstance() {
@@ -185,7 +137,7 @@ void VulkanBase::createInstance() {
     // Application Info Struct
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = title;
+    appInfo.pApplicationName = "App";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -208,8 +160,7 @@ void VulkanBase::createInstance() {
         createInfo.enabledLayerCount =
             static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
-
-        populateDebugMessengerCreateInfo(debugCreateInfo);
+        debugCreateInfo = debugMessenger->getCreateInfo();
         createInfo.pNext =
             (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
     } else {
@@ -259,47 +210,6 @@ std::vector<const char *> VulkanBase::getRequiredExtensions() {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     return extensions;
-}
-
-VKAPI_ATTR VkBool32 VKAPI_CALL VulkanBase::debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-    void *pUserData) {
-
-    fprintf(stderr, "%svalidation layer: %s\n",
-            messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
-                ? "!!! "
-                : "",
-            pCallbackData->pMessage);
-
-    return VK_FALSE;
-}
-
-void VulkanBase::populateDebugMessengerCreateInfo(
-    VkDebugUtilsMessengerCreateInfoEXT &createInfo) {
-    createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity =
-        // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-}
-
-void VulkanBase::setupDebugMessenger() {
-    if (!enableValidationLayers)
-        return;
-
-    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-    populateDebugMessengerCreateInfo(createInfo);
-
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr,
-                                     &debugMessenger) != VK_SUCCESS)
-        throw std::runtime_error("failed to set up debug messenger");
 }
 
 void VulkanBase::pickPhysicalDevice() {
@@ -428,12 +338,6 @@ void VulkanBase::createLogicalDevice() {
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
-void VulkanBase::createSurface() {
-    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) !=
-        VK_SUCCESS)
-        throw std::runtime_error("failed to create window surface");
-}
-
 bool VulkanBase::checkDeviceExtensionSupport(VkPhysicalDevice device) {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount,
@@ -510,10 +414,10 @@ VulkanBase::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
         std::numeric_limits<uint32_t>::max())
         return capabilities.currentExtent;
     else {
-        glfwGetFramebufferSize(window, &size->x, &size->y);
+        window.update();
 
-        VkExtent2D actualExtent = {static_cast<uint32_t>(size->x),
-                                   static_cast<uint32_t>(size->y)};
+        VkExtent2D actualExtent = {static_cast<uint32_t>(window.size->x),
+                                   static_cast<uint32_t>(window.size->y)};
 
         actualExtent.width =
             std::clamp(actualExtent.width, capabilities.minImageExtent.width,
@@ -615,8 +519,8 @@ std::vector<char> VulkanBase::readFile(const char *path) {
 
 void VulkanBase::createGraphicsPipeline() {
     // Load Shaders
-    auto vertShaderCode = readFile("../shaders/triangle/vert.spv");
-    auto fragShaderCode = readFile("../shaders/triangle/frag.spv");
+    auto vertShaderCode = readFile("../../shaders/triangle/vert.spv");
+    auto fragShaderCode = readFile("../../shaders/triangle/frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -1117,11 +1021,8 @@ void VulkanBase::cleanupSwapChain() {
 }
 
 void VulkanBase::recreateSwapChain() {
-    glfwGetFramebufferSize(window, &size->x, &size->y);
-    while (size == vec<2, int>{0}) {
-        glfwGetFramebufferSize(window, &size->x, &size->y);
-        glfwWaitEvents();
-    };
+    while (window.size == vec<2, int>{0})
+        window.update();
 
     vkDeviceWaitIdle(device);
 
@@ -1382,8 +1283,8 @@ void VulkanBase::createDescriptorSets() {
 
 void VulkanBase::createTextureImage() {
     int width, height, channels;
-    stbi_uc *pixels = stbi_load("../res/earth.png", &width, &height, &channels,
-                                STBI_rgb_alpha);
+    stbi_uc *pixels = stbi_load("../../res/earth.png", &width, &height,
+                                &channels, STBI_rgb_alpha);
 
     VkDeviceSize imageSize = width * height * 4;
 

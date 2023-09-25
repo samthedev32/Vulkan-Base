@@ -2,8 +2,9 @@
 
 #include <types.hpp>
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include "debug.hpp"
+#include "pipelines.hpp"
+#include "window.hpp"
 
 // Status:
 // https://vulkan-tutorial.com/en/Texture_mapping/Image_view_and_sampler
@@ -15,19 +16,17 @@ float time();
 
 class VulkanBase {
   public:
-    VulkanBase(Model model, std::vector<std::array<std::string, 2>> shaders,
-               const char *title, vec<2, int> size = {720, 480});
+    VulkanBase(Model model, const char *title, vec<2, int> size = {720, 480});
 
     ~VulkanBase();
 
     bool update();
 
-  public:
-    const char *title;
-    vec<2, int> size;
+    // TODO
+    void addPipeline();
 
   private:
-    GLFWwindow *window;
+    Window window;
 
     // Main Instance
     VkInstance instance;
@@ -36,8 +35,7 @@ class VulkanBase {
     const std::vector<const char *> validationLayers = {
         "VK_LAYER_KHRONOS_validation"};
 
-    // Debug Messenger
-    VkDebugUtilsMessengerEXT debugMessenger;
+    DebugMessenger *debugMessenger = nullptr;
 
     // Physical Device
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -133,24 +131,10 @@ class VulkanBase {
   private:
     void initWindow();
 
-    static void framebufferResizeCallback(GLFWwindow *window, int width,
-                                          int height);
-
     void createInstance();
     bool checkValidationLayerSupport();
 
     std::vector<const char *> getRequiredExtensions();
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL
-    debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                  VkDebugUtilsMessageTypeFlagsEXT messageType,
-                  const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-                  void *pUserData);
-
-    void populateDebugMessengerCreateInfo(
-        VkDebugUtilsMessengerCreateInfoEXT &createInfo);
-
-    void setupDebugMessenger();
 
     void pickPhysicalDevice();
 
@@ -159,8 +143,6 @@ class VulkanBase {
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
     void createLogicalDevice();
-
-    void createSurface();
 
     bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
