@@ -3,7 +3,6 @@
 #include <types.hpp>
 
 #include "debug.hpp"
-#include "pipelines.hpp"
 #include "window.hpp"
 
 // Status:
@@ -26,7 +25,7 @@ class VulkanBase {
     void addPipeline();
 
   private:
-    Window window;
+    Window *window;
 
     // Main Instance
     VkInstance instance;
@@ -45,9 +44,6 @@ class VulkanBase {
 
     // Graphics Queue
     VkQueue graphicsQueue;
-
-    // Window Surface
-    VkSurfaceKHR surface;
 
     // Present Queue
     VkQueue presentQueue;
@@ -116,11 +112,10 @@ class VulkanBase {
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
 
-    // Texture Image
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
-
     VkImageView textureImageView;
+
     VkSampler textureSampler;
 
     // Depth Buffer (Image)

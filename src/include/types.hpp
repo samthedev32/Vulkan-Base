@@ -122,7 +122,8 @@ struct Model {
                         for (int i = 0; i < 3; i++) {
                             Vertex vertex;
                             vertex.position = vertices[v[i] - 1];
-                            vertex.texCoord = texCoords[vt[i] - 1];
+                            if (texCoords.size() > vt[i])
+                                vertex.texCoord = texCoords[vt[i] - 1];
 
                             model.vertices.push_back(vertex);
                             model.indices.push_back(model.vertices.size() - 1);

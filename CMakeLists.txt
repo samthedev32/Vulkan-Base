@@ -11,7 +11,6 @@ set(SOURCES
     src/vk.cpp
     src/window.cpp
     src/debug.cpp
-    src/pipeline.cpp
 )
 
 # Libraries

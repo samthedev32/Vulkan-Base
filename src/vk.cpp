@@ -25,14 +25,14 @@ float time() {
 }
 
 VulkanBase::VulkanBase(Model model, const char *title, vec<2, int> size)
-    : model(model), window(title, size) {
+    : model(model) {
 
     createInstance();
 
+    window = new Window(&instance, title, size);
+
     if (enableValidationLayers)
         debugMessenger = new DebugMessenger(&instance);
-
-    window.createSurface(instance, surface);
 
     pickPhysicalDevice();
     createLogicalDevice();
@@ -40,7 +40,7 @@ VulkanBase::VulkanBase(Model model, const char *title, vec<2, int> size)
     createImageViews();
     createRenderPass();
 
-    // TODO: create multiple GPipelines
+    // TODO: dynamic GPipeline Creation
     createDescriptorSetLayout();
     createGraphicsPipeline();
 
@@ -49,10 +49,12 @@ VulkanBase::VulkanBase(Model model, const char *title, vec<2, int> size)
 
     createCommandPool();
 
+    // TODO: dynamic Texture Loading
     createTextureImage();
     createTextureImageView();
     createTextureSampler();
 
+    // TODO: dynamic Mesh Loading
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
@@ -68,12 +70,15 @@ VulkanBase::~VulkanBase() {
 
     cleanupSwapChain();
 
+    // Destroy Sampler
     vkDestroySampler(device, textureSampler, nullptr);
-    vkDestroyImageView(device, textureImageView, nullptr);
 
+    // Destroy Images
+    vkDestroyImageView(device, textureImageView, nullptr);
     vkDestroyImage(device, textureImage, nullptr);
     vkFreeMemory(device, textureImageMemory, nullptr);
 
+    // Destroy Uniform Buffers
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(device, uniformBuffers[i], nullptr);
         vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
@@ -113,8 +118,7 @@ VulkanBase::~VulkanBase() {
     // Destroy Logical Device
     vkDestroyDevice(device, nullptr);
 
-    // Destroy Surface
-    vkDestroySurfaceKHR(instance, surface, nullptr);
+    delete window;
 
     delete debugMessenger;
 
@@ -125,7 +129,7 @@ VulkanBase::~VulkanBase() {
 bool VulkanBase::update() {
     drawFrame();
 
-    return window.update();
+    return window->update();
 }
 
 void VulkanBase::createInstance() {
@@ -198,6 +202,13 @@ bool VulkanBase::checkValidationLayerSupport() {
 }
 
 std::vector<const char *> VulkanBase::getRequiredExtensions() {
+    // Init & Check Compatibility
+    glfwInit();
+
+    if (!glfwVulkanSupported())
+        throw std::runtime_error("vulkan is not supported");
+
+    // Get Extensions
     uint32_t glfwExtensionCount = 0;
     const char **glfwExtensions;
 
@@ -271,7 +282,7 @@ QueueFamilyIndices VulkanBase::findQueueFamilies(VkPhysicalDevice device) {
 
         // Get Present Family
         VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface,
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, window->surface,
                                              &presentSupport);
 
         if (presentSupport)
@@ -360,29 +371,30 @@ SwapChainSupportDetails
 VulkanBase::querySwapChainSupport(VkPhysicalDevice device) {
     SwapChainSupportDetails details;
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, window->surface,
                                               &details.capabilities);
 
     // Get Formats
     uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, window->surface, &formatCount,
                                          nullptr);
 
     if (formatCount != 0) {
         details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
-                                             details.formats.data());
+        vkGetPhysicalDeviceSurfaceFormatsKHR(
+            device, window->surface, &formatCount, details.formats.data());
     }
 
     // Get Present Modes
     uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, window->surface,
                                               &presentModeCount, nullptr);
 
     if (presentModeCount != 0) {
         details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(
-            device, surface, &presentModeCount, details.presentModes.data());
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, window->surface,
+                                                  &presentModeCount,
+                                                  details.presentModes.data());
     }
     return details;
 }
@@ -414,10 +426,10 @@ VulkanBase::chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities) {
         std::numeric_limits<uint32_t>::max())
         return capabilities.currentExtent;
     else {
-        window.update();
+        window->update();
 
-        VkExtent2D actualExtent = {static_cast<uint32_t>(window.size->x),
-                                   static_cast<uint32_t>(window.size->y)};
+        VkExtent2D actualExtent = {static_cast<uint32_t>(window->size->x),
+                                   static_cast<uint32_t>(window->size->y)};
 
         actualExtent.width =
             std::clamp(actualExtent.width, capabilities.minImageExtent.width,
@@ -448,7 +460,7 @@ void VulkanBase::createSwapChain() {
 
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = surface;
+    createInfo.surface = window->surface;
 
     createInfo.minImageCount = imageCount;
     createInfo.imageFormat = surfaceFormat.format;
@@ -943,6 +955,7 @@ void VulkanBase::drawFrame() {
         device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
         VK_NULL_HANDLE, &imageIndex);
 
+    // TODO: Render to separate texture
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreateSwapChain();
         return;
@@ -1021,8 +1034,8 @@ void VulkanBase::cleanupSwapChain() {
 }
 
 void VulkanBase::recreateSwapChain() {
-    while (window.size == vec<2, int>{0})
-        window.update();
+    while (window->size == vec<2, int>{0})
+        window->update();
 
     vkDeviceWaitIdle(device);
 
@@ -1200,10 +1213,10 @@ void VulkanBase::updateUniformBuffer(uint32_t currentImage) {
     UniformBufferObject ubo{};
     mat<4> model = mat<4>::rotationX(rads(90.0f)) *
                    mat<4>::rotationZ(rads(time() * 20.0f));
-    model = model * mat<4>::rotationY(rads(45.0f));
+    model = model * mat<4>::rotationY(rads(23.5f));
     ubo.model = model;
     ubo.view =
-        mat<4>::lookat(vec<3>(00.0f, 40.0f, 40.0f), vec<3>(0.0f, 0.0f, 1.0f),
+        mat<4>::lookat(vec<3>(00.0f, 40.0f, 15.0f), vec<3>(0.0f, 0.0f, 2.0f),
                        vec<3>(0.0f, 0.0f, 1.0f));
     ubo.projection = mat<4>::perspective(
         rads(45.0f), swapChainExtent.width / (float)swapChainExtent.height,
@@ -1286,7 +1299,7 @@ void VulkanBase::createTextureImage() {
     stbi_uc *pixels = stbi_load("../../res/earth.png", &width, &height,
                                 &channels, STBI_rgb_alpha);
 
-    VkDeviceSize imageSize = width * height * 4;
+    VkDeviceSize imageSize = width * height * channels;
 
     if (!pixels)
         throw std::runtime_error("failed to load texture image");

@@ -12,17 +12,17 @@ class Window {
   public:
     vec<2, int> size;
     bool isResized;
+    VkSurfaceKHR surface;
 
   public:
-    Window(const char *title, vec<2, int> size);
+    Window(VkInstance *instance, const char *title, vec<2, int> size);
     ~Window();
 
     bool update();
 
-    void createSurface(VkInstance instance, VkSurfaceKHR &surface);
-
   private:
     GLFWwindow *window;
+    VkInstance *instance;
 
   private:
     static void framebufferResizeCallback(GLFWwindow *window, int width,
