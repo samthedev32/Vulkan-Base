@@ -9,22 +9,22 @@
 #include <stdexcept>
 
 class Window {
-  public:
-    vec<2, int> size;
-    bool isResized;
-    VkSurfaceKHR surface;
+public:
+  vec<2, int> size;
+  bool isResized;
+  VkSurfaceKHR surface;
 
-  public:
-    Window(VkInstance *instance, const char *title, vec<2, int> size);
-    ~Window();
+public:
+  Window(VkInstance *instance, const char *title, vec<2, int> size);
+  ~Window();
 
-    bool update();
+  bool update();
 
-  private:
-    GLFWwindow *window;
-    VkInstance *instance;
+private:
+  GLFWwindow *window;
+  VkInstance *instance;
 
-  private:
-    static void framebufferResizeCallback(GLFWwindow *window, int width,
-                                          int height);
+private:
+  static void framebufferResizeCallback(GLFWwindow *window, int width,
+                                        int height);
 };
