@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
+// Vulkan Debug Messenger
 class DebugMessenger {
 public:
   // Set Up Debug Messenger

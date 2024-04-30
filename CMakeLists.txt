@@ -21,8 +21,7 @@ set(LIBRARIES
 
 # Project
 project(vk VERSION 0.1.0 LANGUAGES C CXX)
-add_library(vk ${SOURCES})
-target_link_libraries(vk ${LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/include)
 
-add_subdirectory(app)
+add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
+target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

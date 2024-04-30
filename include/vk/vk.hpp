@@ -36,16 +36,9 @@ private:
 
   DebugMessenger *debugMessenger = nullptr;
 
-  // Physical Device
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-
-  // Logical Device
   VkDevice device;
-
-  // Graphics Queue
   VkQueue graphicsQueue;
-
-  // Present Queue
   VkQueue presentQueue;
 
   // Required Device Extensions
